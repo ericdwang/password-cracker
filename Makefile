@@ -8,3 +8,6 @@ sha256: sha256.c
 
 main: main.c
 	$(CC) main.c sha256_functions.c $(CFLAGS) -o main
+
+clean:
+	rm -rf main sha256

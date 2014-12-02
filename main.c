@@ -40,27 +40,31 @@ void get_possible_values(char* values, int lowercase, int uppercase, int digits)
 }
 
 /**
+ * Get a guess given an index and the values it can take on.
+ */
+void get_guess(char* guess, char* values, int num_values, int index, int length) {
+    int i;
+    for (i = 0; i < length; i++) {
+        guess[i] = values[index % num_values];
+        index /= num_values;
+    }
+}
+
+/**
  * Bruteforce the string that results in the specified hash given the values
  * it can take on.
  */
-int brute_force(char* guess, unsigned char* buffer, char* values,
-                unsigned char* hash, int index, int maxIndex) {
-    int i;
-    for (i = 0; i < strlen(values); i++) {
-        guess[index] = values[i];
+void brute_force(char* guess, unsigned char* hash, char* values, int num_values, int length) {
+    unsigned char buffer[SHA256_DIGEST_LENGTH];
+    int found = -1;
+    int index;
 
-        if (index == maxIndex) {
-            sha256(guess, buffer);
-            if (strncmp(buffer, hash, SHA256_DIGEST_LENGTH) == 0) {
-                return 0;
-            };
-        } else {
-            if (brute_force(guess, buffer, values, hash, index + 1, maxIndex) == 0) {
-                return 0;
-            }
-        }
+    while (found != 0) {
+        get_guess(guess, values, num_values, index, length);
+        sha256(guess, buffer);
+        found = strncmp(buffer, hash, SHA256_DIGEST_LENGTH);
+        index++;
     }
-    return -1;
 }
 
 int main (int argc, char **argv) {
@@ -102,22 +106,26 @@ int main (int argc, char **argv) {
     }
 
     // Check arguments
-    if (length == 0 || hash_arg == 0 || (
-                lowercase == 0 && uppercase == 0 && digits == 0)) {
+    if (length == 0 || hash_arg == 0) {
         printf("Usage: ./main\n"
                "REQUIRED: -h (password hash) "
                "-n (password length)\n"
-               "AT LEAST ONE: -l (contains lowercase) "
+               "DEFAULT -lud unless specified: -l (contains lowercase) "
                "-u (contains uppercase) "
                "-d (contains digits)\n");
         return 1;
     }
+    if (lowercase == 0 && uppercase == 0 && digits == 0) {
+        lowercase = 1;
+        uppercase = 1;
+        digits = 1;
+    }
 
     // Get the possible characters for the password
-    int values_length = lowercase * 26 + uppercase * 26 + digits * 10 + 1;
-    char values[values_length + 1];
+    int num_values = lowercase * 26 + uppercase * 26 + digits * 10;
+    char values[num_values + 1];
     get_possible_values(values, lowercase, uppercase, digits);
-    values[values_length] = '\0';
+    values[num_values] = '\0';
 
     // Create buffers
     char guess[length + 1];
@@ -126,13 +134,9 @@ int main (int argc, char **argv) {
 
     // Bruteforce the password and check how long it takes
     clock_t time = clock();
-    int result = brute_force(guess, buffer, values, hash, 0, length - 1);
+    brute_force(guess, hash, values, num_values, length);
     time = clock() - time;
 
-    if (result != 0) {
-        printf("No password found\n");
-        return 1;
-    }
     printf("Password: %s\n", guess);
     printf("Time taken: %lu seconds\n", time / CLOCKS_PER_SEC);
     return 0;
