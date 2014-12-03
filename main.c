@@ -13,10 +13,27 @@ const int LOWERCASE_START = 97;
 const int UPPERCASE_START = 65;
 const int DIGIT_START = 48;
 
+// Sets of characters
+int lowercase = 0;
+int uppercase = 0;
+int digits = 0;
+
+// The possible values that the password can take on
+char* values;
+int num_values;
+
+// The hash of the password to crack
+unsigned char hash[SHA256_DIGEST_LENGTH];
+// Length of the password
+int length = 0;
+
+// Buffer for guesses
+char* guess;
+
 /**
  * Get the possible characters that a string can have.
  */
-void get_possible_values(char* values, int lowercase, int uppercase, int digits) {
+void get_possible_values() {
     int i;
     int index = 0;
     if (lowercase) {
@@ -42,7 +59,7 @@ void get_possible_values(char* values, int lowercase, int uppercase, int digits)
 /**
  * Get a guess given an index and the values it can take on.
  */
-void get_guess(char* guess, char* values, int num_values, int index, int length) {
+void get_guess(int index) {
     int i;
     for (i = 0; i < length; i++) {
         guess[i] = values[index % num_values];
@@ -54,13 +71,13 @@ void get_guess(char* guess, char* values, int num_values, int index, int length)
  * Bruteforce the string that results in the specified hash given the values
  * it can take on.
  */
-void brute_force(char* guess, unsigned char* hash, char* values, int num_values, int length) {
+void brute_force() {
     unsigned char buffer[SHA256_DIGEST_LENGTH];
     int found = -1;
     int index;
 
     while (found != 0) {
-        get_guess(guess, values, num_values, index, length);
+        get_guess(index);
         sha256(guess, buffer);
         found = strncmp(buffer, hash, SHA256_DIGEST_LENGTH);
         index++;
@@ -68,15 +85,9 @@ void brute_force(char* guess, unsigned char* hash, char* values, int num_values,
 }
 
 int main (int argc, char **argv) {
-    int lowercase = 0;
-    int uppercase = 0;
-    int digits = 0;
-    int length = 0;
-
     int hash_arg = 0;
     char* pos;
     int i;
-    unsigned char hash[SHA256_DIGEST_LENGTH];
 
     // Parse arguments
     int c;
@@ -122,19 +133,18 @@ int main (int argc, char **argv) {
     }
 
     // Get the possible characters for the password
-    int num_values = lowercase * 26 + uppercase * 26 + digits * 10;
-    char values[num_values + 1];
-    get_possible_values(values, lowercase, uppercase, digits);
+    num_values = lowercase * 26 + uppercase * 26 + digits * 10;
+    values = (char*) malloc((num_values + 1) * sizeof(char));
+    get_possible_values(values);
     values[num_values] = '\0';
 
-    // Create buffers
-    char guess[length + 1];
+    // Create guess buffer
+    guess = (char*) malloc((length + 1) * sizeof(char));
     guess[length] = '\0';
-    unsigned char buffer[SHA256_DIGEST_LENGTH];
 
     // Bruteforce the password and check how long it takes
     clock_t time = clock();
-    brute_force(guess, hash, values, num_values, length);
+    brute_force();
     time = clock() - time;
 
     printf("Password: %s\n", guess);
