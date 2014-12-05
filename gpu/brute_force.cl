@@ -1,4 +1,4 @@
-static __constant int HASH_SIZE = 4;
+static __constant int HASH_SIZE = 6;
 
 /*
  * Generate a guess given an index and the values it can take on.
@@ -43,6 +43,9 @@ void copy_guess(
     password[length] = '\0';
 }
 
+/**
+ * Brute force a password, doing guesses in parallel.
+ */
 __kernel void brute_force(
         __constant char hash[],
         __constant char values[],
@@ -55,13 +58,16 @@ __kernel void brute_force(
     int size = get_global_size(0);
     int guess_index = get_local_id(0) * length;
 
-    while (found[0] != size) {
+    int status = 0;
+    while (status != 1) {
         get_guess(values, guesses, guess_index, num_values, index, length);
         if (check_guess(hash, guesses, guess_index) == 0) {
             copy_guess(password, guesses, guess_index, length);
-            found[0] = size;
+            // Notify the other work-items to stop
+            found[0] = 1;
+            break;
         }
         index += size;
+        status = found[0];
     }
 }
-
