@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <openssl/sha.h>
 
@@ -29,6 +29,16 @@ int length = 0;
 
 // Buffer for guesses
 char* guess;
+
+/**
+ * Get a timestamp.
+ */
+double timestamp()
+{
+    struct timeval tv;
+    gettimeofday(&tv, 0);
+    return tv.tv_sec + 1e-6*tv.tv_usec;
+}
 
 /**
  * Get the possible characters that a string can have.
@@ -79,7 +89,7 @@ void brute_force() {
     while (found != 0) {
         get_guess(index);
         sha256(guess, buffer);
-        found = strncmp(buffer, hash, SHA256_DIGEST_LENGTH);
+        found = strncmp((char*) buffer, (char*) hash, SHA256_DIGEST_LENGTH);
         index++;
     }
 }
@@ -135,7 +145,7 @@ int main (int argc, char **argv) {
     // Get the possible characters for the password
     num_values = lowercase * 26 + uppercase * 26 + digits * 10;
     values = (char*) malloc((num_values + 1) * sizeof(char));
-    get_possible_values(values);
+    get_possible_values();
     values[num_values] = '\0';
 
     // Create guess buffer
@@ -143,11 +153,11 @@ int main (int argc, char **argv) {
     guess[length] = '\0';
 
     // Bruteforce the password and check how long it takes
-    clock_t time = clock();
+    double t0 = timestamp();
     brute_force();
-    time = clock() - time;
+    t0 = timestamp() - t0;
 
     printf("Password: %s\n", guess);
-    printf("Time taken: %lu seconds\n", time / CLOCKS_PER_SEC);
+    printf("Time taken: %gs\n", t0);
     return 0;
 }

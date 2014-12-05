@@ -1,13 +1,13 @@
-CC = gcc
+OBJS = main.o sha256.o sha256_functions.o
+CC = g++
 CFLAGS = -lcrypto
 
-all: sha256 main
+%.o: %.cpp sha256_functions.h
+	$(CC) -O2 -c $<
 
-sha256: sha256.c
-	$(CC) sha256.c sha256_functions.c $(CFLAGS) -o sha256
-
-main: main.c
-	$(CC) main.c sha256_functions.c $(CFLAGS) -o main
+all: $(OBJS)
+	$(CC) main.o sha256_functions.o -o main $(CFLAGS)
+	$(CC) sha256.o sha256_functions.o -o sha256 $(CFLAGS)
 
 clean:
-	rm -rf main sha256
+	rm -rf $(OBJS) main sha256
