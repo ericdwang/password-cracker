@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <omp.h>
 #include <openssl/sha.h>
 
 #include "sha256_functions.h"
@@ -27,17 +28,30 @@ unsigned char hash[SHA256_DIGEST_LENGTH];
 // Length of the password
 int length = 0;
 
-// Buffer for guesses
-char* guess;
+char* password;
 
 /**
  * Get a timestamp.
  */
-double timestamp()
-{
+double timestamp() {
     struct timeval tv;
     gettimeofday(&tv, 0);
     return tv.tv_sec + 1e-6*tv.tv_usec;
+}
+
+/**
+ * Raise a base to a power.
+ */
+unsigned long long ipow(unsigned long long base, int exp) {
+    unsigned long long result = 1ULL;
+    while (exp) {
+        if (exp & 1) {
+            result *= (unsigned long long) base;
+        }
+        exp >>= 1;
+        base *= base;
+    }
+    return result;
 }
 
 /**
@@ -69,7 +83,7 @@ void get_possible_values() {
 /**
  * Get a guess given an index and the values it can take on.
  */
-void get_guess(int index) {
+void get_guess(char guess[], int index) {
     int i;
     for (i = 0; i < length; i++) {
         guess[i] = values[index % num_values];
@@ -82,15 +96,22 @@ void get_guess(int index) {
  * it can take on.
  */
 void brute_force() {
+    int found = 0;
+    unsigned long long max_guesses = ipow(num_values, length);
     unsigned char buffer[SHA256_DIGEST_LENGTH];
-    int found = -1;
-    int index;
+    char guess[length + 1];
+    guess[length] = '\0';
 
-    while (found != 0) {
-        get_guess(index);
-        sha256(guess, buffer);
-        found = strncmp((char*) buffer, (char*) hash, SHA256_DIGEST_LENGTH);
-        index++;
+    # pragma omp parallel for private(buffer) private(guess)
+    for (unsigned long long index = 0; index < max_guesses; index++) {
+        if (found == 0) {
+            get_guess(guess, index);
+            sha256(guess, buffer);
+            if (strncmp((char*) buffer, (char*) hash, SHA256_DIGEST_LENGTH) == 0) {
+                memcpy(password, guess, length + 1);
+                found = 1;
+            }
+        }
     }
 }
 
@@ -149,15 +170,14 @@ int main (int argc, char **argv) {
     values[num_values] = '\0';
 
     // Create guess buffer
-    guess = (char*) malloc((length + 1) * sizeof(char));
-    guess[length] = '\0';
+    password = (char*) malloc((length + 1) * sizeof(char));
 
     // Bruteforce the password and check how long it takes
     double t0 = timestamp();
     brute_force();
     t0 = timestamp() - t0;
 
-    printf("Password: %s\n", guess);
+    printf("Password: %s\n", password);
     printf("Time taken: %gs\n", t0);
     return 0;
 }
