@@ -83,7 +83,7 @@ void get_possible_values() {
 /**
  * Get a guess given an index and the values it can take on.
  */
-void get_guess(char guess[], int index) {
+void get_guess(char guess[], unsigned long long index) {
     int i;
     for (i = 0; i < length; i++) {
         guess[i] = values[index % num_values];

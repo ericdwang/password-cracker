@@ -8,7 +8,7 @@ void get_guess(
         __local char guesses[],
         int guess_index,
         int num_values,
-        int index,
+        ulong index,
         int length) {
     int i;
     for (i = 0; i < length; i++) {
@@ -55,7 +55,7 @@ __kernel void brute_force(
         __local char guesses[],
         int num_values,
         int length) {
-    int index = get_global_id(0);
+    ulong index = get_global_id(0);
     int size = get_global_size(0);
     int guess_index = get_local_id(0) * length;
 
