@@ -1,4 +1,4 @@
-static __constant int HASH_SIZE = 6;
+static __constant int SHA256_DIGEST_LENGTH = 32;
 
 /*
  * Generate a guess given an index and the values it can take on.
@@ -20,9 +20,10 @@ void get_guess(
 /*
  * Check a guess against a hash.
  */
-int check_guess(__constant char hash[], __local char guesses[], int guess_index) {
+int check_guess(__constant char hash[], __local char guesses[], int guess_index, int length) {
     int i;
-    for (i = 0; i < HASH_SIZE; i++) {
+    // TODO: Use actual hash length
+    for (i = 0; i < length; i++) {
         if (guesses[guess_index + i] != hash[i]) {
             return -1;
         }
@@ -61,7 +62,7 @@ __kernel void brute_force(
     int status = 0;
     while (status != 1) {
         get_guess(values, guesses, guess_index, num_values, index, length);
-        if (check_guess(hash, guesses, guess_index) == 0) {
+        if (check_guess(hash, guesses, guess_index, length) == 0) {
             copy_guess(password, guesses, guess_index, length);
             // Notify the other work-items to stop
             found[0] = 1;
