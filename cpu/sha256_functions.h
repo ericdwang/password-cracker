@@ -1,3 +1,3 @@
-void sha256(char* string, unsigned char* buffer);
+void get_hash_hex(char* hex, unsigned char* hash);
 
-void print_hash(unsigned char* hash);
+void sha256(char* string, unsigned char* buffer, int iterations);

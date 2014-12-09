@@ -37,6 +37,9 @@ unsigned char hash[SHA256_DIGEST_LENGTH];
 int min_length = 1;
 int max_length = 5;
 
+// Number of iterations to hash
+int iterations = 1;
+
 char* password;
 
 /**
@@ -157,7 +160,7 @@ void brute_force() {
             if (!valid_guess(guess, length)) {
                 continue;
             }
-            sha256(guess, buffer);
+            sha256(guess, buffer, iterations);
             if (memcmp(buffer, hash, SHA256_DIGEST_LENGTH) == 0) {
                 memcpy(password, guess, length + 1);
                 found = 1;
@@ -173,7 +176,7 @@ int main (int argc, char **argv) {
 
     // Parse arguments
     int c;
-    while((c = getopt(argc, argv, "h:m:n:l:u:d:p:")) != -1) {
+    while((c = getopt(argc, argv, "h:m:n:l:u:d:p:i:")) != -1) {
         switch(c) {
             case 'h':
                 // Convert the hexidecimal string into a byte array
@@ -206,6 +209,9 @@ int main (int argc, char **argv) {
                 min_punctuation = atoi(optarg);
                 punctuation = 1;
                 break;
+            case 'i':
+                iterations = atoi(optarg);
+                break;
         }
     }
 
@@ -213,13 +219,14 @@ int main (int argc, char **argv) {
     if (!hash_arg) {
         printf("Usage: ./main\n"
                 "REQUIRED: -h (password hash)\n"
-                "OPTIONAL (default 1-5 characters, all possible characters, no minimum):\n"
+                "OPTIONAL (default 1-5 characters, all possible types, 1 iteration):\n"
                 "-m (min password length)\n"
                 "-n (max password length)\n"
                 "-l (min lowercase characters)\n"
                 "-u (min uppercase characters)\n"
                 "-d (min digits characters)\n"
                 "-p (min punctuation characters)\n"
+                "-i (number of iterations to hash)\n"
                 );
         return 1;
     }
@@ -239,8 +246,8 @@ int main (int argc, char **argv) {
     // Create guess buffer
     password = (char*) malloc((max_length + 1) * sizeof(char));
 
-    printf("Cracking password with %d to %d characters containing:\n",
-            min_length, max_length);
+    printf("Cracking password with %d to %d characters with %d iterations containing:\n",
+            min_length, max_length, iterations);
     if (lowercase) {
         printf("At least %d lowercase characters\n", min_lowercase);
     } else {
