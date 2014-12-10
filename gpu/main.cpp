@@ -39,8 +39,8 @@ unsigned char hash[SHA256_DIGEST_LENGTH];
 int iterations = 1;
 
 // Work sizes
-static const int GLOBAL_SIZE = 1 << 14;
-static const int LOCAL_SIZE = 128;
+static const int GLOBAL_SIZE = 1 << 12;
+static const int LOCAL_SIZE = 1 << 7;
 
 int main(int argc, char *argv[]) {
     int hash_arg = 0;

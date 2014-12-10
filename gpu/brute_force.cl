@@ -479,7 +479,7 @@ void get_guess(
         __constant char values[],
         char guess[],
         int num_values,
-        ulong index,
+        unsigned long index,
         int length) {
     int i;
     for (i = 0; i < length; i++) {
@@ -633,6 +633,7 @@ __kernel void brute_force(
 
         unsigned long max_guesses = ipow(num_values, length);
         for (unsigned long index = start_index; index < max_guesses && !found; index += size) {
+            found = global_found[0];
             get_guess(values, guess, num_values, index, length);
             if (!valid_guess(guess, length, min_lowercase,
                         min_uppercase, min_digits, min_punctuation)) {
@@ -646,7 +647,6 @@ __kernel void brute_force(
                 found = 1;
                 break;
             }
-            found = global_found[0];
         }
     }
 }
