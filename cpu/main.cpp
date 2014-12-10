@@ -4,7 +4,6 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <omp.h>
-#include <openssl/sha.h>
 
 #include "sha256_functions.h"
 
@@ -142,14 +141,13 @@ int valid_guess(char guess[], int length) {
  * it can take on.
  */
 void brute_force() {
+    unsigned char buffer[SHA256_DIGEST_LENGTH];
+    char guess[max_length + 1];
     int length;
     int found = 0;
 
     for (length = min_length; length <= max_length && !found; length++) {
         unsigned long long max_guesses = ipow(num_values, length);
-        unsigned char buffer[SHA256_DIGEST_LENGTH];
-        char guess[length + 1];
-        guess[length] = '\0';
 
         # pragma omp parallel for private(buffer) private(guess)
         for (unsigned long long index = 0; index < max_guesses; index++) {
@@ -163,6 +161,7 @@ void brute_force() {
             sha256(guess, length, buffer, iterations);
             if (memcmp(buffer, hash, SHA256_DIGEST_LENGTH) == 0) {
                 memcpy(password, guess, length + 1);
+                password[length] = '\0';
                 found = 1;
             }
         }

@@ -1,6 +1,6 @@
 OBJS = main.o sha256.o sha256_functions.o
 CC = g++
-CFLAGS = -lcrypto -fopenmp
+CFLAGS = -fopenmp
 
 %.o: %.cpp sha256_functions.h
 	$(CC) -fopenmp -O3 -c $<

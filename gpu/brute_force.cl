@@ -576,7 +576,7 @@ void get_hash_hex(char* hex, unsigned char* hash) {
  * Compute the SHA-256 hash of a string for a number of iterations and write
  * it to a buffer.
  */
-void sha256(char guess[], int length, char buffer[], int iterations) {
+void sha256(char guess[], int length, unsigned char buffer[], int iterations) {
     struct sha256_ctx hdc;
     sha256_init(&hdc);
     sha256_update(&hdc, guess, length);
