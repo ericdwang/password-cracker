@@ -31,14 +31,14 @@ int num_values;
 int length = 0;
 // Length of the hash
 static const int SHA256_DIGEST_LENGTH = 32;
-char hash[SHA256_DIGEST_LENGTH];
+unsigned char hash[SHA256_DIGEST_LENGTH];
 
 // Number of iterations to hash
 int iterations = 1;
 
 // Work sizes
 static const int GLOBAL_SIZE = 1 << 14;
-static const int LOCAL_SIZE = 512;
+static const int LOCAL_SIZE = 128;
 
 int main(int argc, char *argv[]) {
     int hash_arg = 0;
@@ -50,8 +50,12 @@ int main(int argc, char *argv[]) {
     while((c = getopt(argc, argv, "h:m:n:l:u:d:p:i:")) != -1) {
         switch(c) {
             case 'h':
-                // TODO: Read in actual hash
-                strcpy(hash, optarg);
+                // Convert the hexidecimal string into a byte array
+                pos = optarg;
+                for (i = 0;  i < SHA256_DIGEST_LENGTH; i++) {
+                    sscanf(pos, "%2hhx", &hash[i]);
+                    pos += 2 * sizeof(char);
+                }
                 hash_arg = 1;
                 break;
             case 'n':
@@ -174,19 +178,17 @@ int main(int argc, char *argv[]) {
     CHK_ERR(err);
     err = clSetKernelArg(brute_force, 3, sizeof(cl_mem), &g_password);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 4, sizeof(char) * (length * LOCAL_SIZE), NULL);
+    err = clSetKernelArg(brute_force, 4, sizeof(int), &num_values);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 5, sizeof(int), &num_values);
+    err = clSetKernelArg(brute_force, 5, sizeof(int), &length);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 6, sizeof(int), &length);
+    err = clSetKernelArg(brute_force, 6, sizeof(int), &min_lowercase);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 7, sizeof(int), &min_lowercase);
+    err = clSetKernelArg(brute_force, 7, sizeof(int), &min_uppercase);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 8, sizeof(int), &min_uppercase);
+    err = clSetKernelArg(brute_force, 8, sizeof(int), &min_digits);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 9, sizeof(int), &min_digits);
-    CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 10, sizeof(int), &min_punctuation);
+    err = clSetKernelArg(brute_force, 9, sizeof(int), &min_punctuation);
     CHK_ERR(err);
 
     printf("Cracking password with %d characters with %d iterations containing:\n",
