@@ -160,7 +160,7 @@ void brute_force() {
             if (!valid_guess(guess, length)) {
                 continue;
             }
-            sha256(guess, buffer, iterations);
+            sha256(guess, length, buffer, iterations);
             if (memcmp(buffer, hash, SHA256_DIGEST_LENGTH) == 0) {
                 memcpy(password, guess, length + 1);
                 found = 1;

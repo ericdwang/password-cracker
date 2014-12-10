@@ -19,10 +19,10 @@ void get_hash_hex(char* hex, unsigned char* hash) {
  * Compute the SHA-256 hash of a string for a number of iterations and write
  * it to a buffer.
  */
-void sha256(char* string, unsigned char* buffer, int iterations) {
+void sha256(char* string, int length, unsigned char* buffer, int iterations) {
     SHA256_CTX sha256;
     SHA256_Init(&sha256);
-    SHA256_Update(&sha256, string, strlen(string));
+    SHA256_Update(&sha256, string, length);
     SHA256_Final(buffer, &sha256);
     int i;
     char hex[SHA256_DIGEST_LENGTH * 2 + 1];

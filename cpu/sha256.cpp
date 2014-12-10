@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
 
     printf("Hashing \"%s\" %d number of times\n", string, iterations);
     // Hash the string for the desired number of times and print the output
-    sha256(string, hash, iterations);
+    sha256(string, strlen(string), hash, iterations);
     get_hash_hex(hex, hash);
     printf("%s\n", hex);
     return 0;
