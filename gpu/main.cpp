@@ -26,8 +26,8 @@ static const int SHA256_DIGEST_LENGTH = 32;
 char hash[SHA256_DIGEST_LENGTH];
 
 // Work sizes
-static const int GLOBAL_SIZE = 256;
-static const int LOCAL_SIZE = 256;
+static const int GLOBAL_SIZE = 1 << 14;
+static const int LOCAL_SIZE = 512;
 
 int main(int argc, char *argv[]) {
     int hash_arg = 0;
