@@ -28,7 +28,9 @@ int min_punctuation = 0;
 int num_values;
 
 // Length of the password
-int length = 0;
+int min_length = 1;
+int max_length = 5;
+
 // Length of the hash
 static const int SHA256_DIGEST_LENGTH = 32;
 unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -58,8 +60,11 @@ int main(int argc, char *argv[]) {
                 }
                 hash_arg = 1;
                 break;
+            case 'm':
+                min_length = atoi(optarg);
+                break;
             case 'n':
-                length = atoi(optarg);
+                max_length = atoi(optarg);
                 break;
             case 'l':
                 min_lowercase = atoi(optarg);
@@ -135,7 +140,7 @@ int main(int argc, char *argv[]) {
     }
     values[num_values] = '\0';
 
-    char password[length + 1];
+    char password[max_length + 1];
     int found[1] = {0};
 
     // Set up and compile OpenCL kernels
@@ -162,7 +167,7 @@ int main(int argc, char *argv[]) {
             sizeof(int), &found, &err);
     cl_mem g_password = clCreateBuffer(
             cv.context, CL_MEM_WRITE_ONLY,
-            sizeof(char) * (length + 1), &password, &err);
+            sizeof(char) * (max_length + 1), &password, &err);
     CHK_ERR(err);
 
     // Set global and local work sizes
@@ -180,19 +185,23 @@ int main(int argc, char *argv[]) {
     CHK_ERR(err);
     err = clSetKernelArg(brute_force, 4, sizeof(int), &num_values);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 5, sizeof(int), &length);
+    err = clSetKernelArg(brute_force, 5, sizeof(int), &min_length);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 6, sizeof(int), &min_lowercase);
+    err = clSetKernelArg(brute_force, 6, sizeof(int), &max_length);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 7, sizeof(int), &min_uppercase);
+    err = clSetKernelArg(brute_force, 7, sizeof(int), &min_lowercase);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 8, sizeof(int), &min_digits);
+    err = clSetKernelArg(brute_force, 8, sizeof(int), &min_uppercase);
     CHK_ERR(err);
-    err = clSetKernelArg(brute_force, 9, sizeof(int), &min_punctuation);
+    err = clSetKernelArg(brute_force, 9, sizeof(int), &min_digits);
+    CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 10, sizeof(int), &min_punctuation);
+    CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 11, sizeof(int), &iterations);
     CHK_ERR(err);
 
-    printf("Cracking password with %d characters with %d iterations containing:\n",
-            length, iterations);
+    printf("Cracking password with %d to %d characters with %d iterations containing:\n",
+            min_length, max_length, iterations);
     if (lowercase) {
         printf("At least %d lowercase characters\n", min_lowercase);
     } else {
@@ -224,7 +233,7 @@ int main(int argc, char *argv[]) {
     // Read the password found on the GPU
     err = clEnqueueReadBuffer(
             cv.commands, g_password, true, 0,
-            sizeof(char) * (length + 1), password, 0, NULL, NULL);
+            sizeof(char) * (max_length + 1), password, 0, NULL, NULL);
     CHK_ERR(err);
 
     t0 = timestamp() - t0;

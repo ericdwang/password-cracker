@@ -470,7 +470,7 @@ static __constant int UPPERCASE_START = 65;
 static __constant int DIGIT_START = 48;
 static __constant int PUNCTUATION_START = 32;
 
-static __constant int SHA256_DIGEST_LENGTH = 32;
+# define SHA256_DIGEST_LENGTH 32
 
 /*
  * Generate a guess given an index and the values it can take on.
@@ -547,12 +547,62 @@ void copy_guess(__global char password[], char guess[], int length) {
     password[length] = '\0';
 }
 
-void sha256(char guess[], int length, char buffer[]) {
+/**
+ * Convert a decimal number to hexidecimal.
+ */
+int to_hex(int number) {
+    if (number < 10) {
+        return number + DIGIT_START;
+    } else {
+        return number + LOWERCASE_START - 10;
+    }
+}
+
+/**
+ * Get the hexidecimal representation of a hash stored in an unsigned char
+ * array.
+ */
+void get_hash_hex(char* hex, unsigned char* hash) {
+    int i;
+    for (i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        int value = hash[i];
+        hex[i * 2 + 1] = to_hex(value % 16);
+        hex[i * 2] = to_hex(value / 16);
+    }
+    hex[64] = 0;
+}
+
+/**
+ * Compute the SHA-256 hash of a string for a number of iterations and write
+ * it to a buffer.
+ */
+void sha256(char guess[], int length, char buffer[], int iterations) {
     struct sha256_ctx hdc;
     sha256_init(&hdc);
     sha256_update(&hdc, guess, length);
     sha256_final(&hdc);
     sha256_digest(&hdc, buffer);
+    int i;
+    char hex[SHA256_DIGEST_LENGTH * 2 + 1];
+	for (i = 1; i < iterations; i++) {
+        get_hash_hex(hex, buffer);
+        sha256_init(&hdc);
+        sha256_update(&hdc, hex, SHA256_DIGEST_LENGTH * 2);
+        sha256_final(&hdc);
+        sha256_digest(&hdc, buffer);
+    }
+}
+
+unsigned long ipow(int base, int exp) {
+    unsigned long result = 1UL;
+    while (exp) {
+        if (exp & 1) {
+            result *= (unsigned long) base;
+        }
+        exp >>= 1;
+        base *= base;
+    }
+    return result;
 }
 
 /**
@@ -561,35 +611,42 @@ void sha256(char guess[], int length, char buffer[]) {
 __kernel void brute_force(
         __constant unsigned char hash[],
         __constant char values[],
-        __global int found[],
+        __global int global_found[],
         __global char password[],
         int num_values,
-        int length,
+        int min_length,
+        int max_length,
         int min_lowercase,
         int min_uppercase,
         int min_digits,
-        int min_punctuation
+        int min_punctuation,
+        int iterations
         ) {
-    ulong index = get_global_id(0);
+    unsigned long start_index = get_global_id(0);
     int size = get_global_size(0);
     char guess[32];
-    unsigned char buffer[32];
+    unsigned char buffer[SHA256_DIGEST_LENGTH];
 
-    int status = 0;
-    while (!status) {
-        get_guess(values, guess, num_values, index, length);
-        if (!valid_guess(guess, length, min_lowercase,
-                    min_uppercase, min_digits, min_punctuation)) {
-            continue;
+    int length;
+    int found = 0;
+    for (length = min_length; length <= max_length && !found; length++) {
+
+        unsigned long max_guesses = ipow(num_values, length);
+        for (unsigned long index = start_index; index < max_guesses && !found; index += size) {
+            get_guess(values, guess, num_values, index, length);
+            if (!valid_guess(guess, length, min_lowercase,
+                        min_uppercase, min_digits, min_punctuation)) {
+                continue;
+            }
+            sha256(guess, length, buffer, iterations);
+            if (check_guess(hash, buffer) == 0) {
+                copy_guess(password, guess, length);
+                // Notify the other work-items to stop
+                global_found[0] = 1;
+                found = 1;
+                break;
+            }
+            found = global_found[0];
         }
-        sha256(guess, length, buffer);
-        if (check_guess(hash, buffer) == 0) {
-            copy_guess(password, guess, length);
-            // Notify the other work-items to stop
-            found[0] = 1;
-            break;
-        }
-        index += size;
-        status = found[0];
     }
 }
