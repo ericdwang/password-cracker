@@ -10,11 +10,19 @@
 const int LOWERCASE_START = 97;
 const int UPPERCASE_START = 65;
 const int DIGIT_START = 48;
+const int PUNCTUATION_START = 32;
 
 // Sets of characters
 int lowercase = 0;
 int uppercase = 0;
 int digits = 0;
+int punctuation = 0;
+
+// Minimum number of characters for each type
+int min_lowercase = 0;
+int min_uppercase = 0;
+int min_digits = 0;
+int min_punctuation = 0;
 
 // The possible values that the password can take on
 int num_values;
@@ -24,6 +32,9 @@ int length = 0;
 // Length of the hash
 static const int SHA256_DIGEST_LENGTH = 32;
 char hash[SHA256_DIGEST_LENGTH];
+
+// Number of iterations to hash
+int iterations = 1;
 
 // Work sizes
 static const int GLOBAL_SIZE = 1 << 14;
@@ -36,45 +47,62 @@ int main(int argc, char *argv[]) {
 
     // Parse arguments
     int c;
-    while((c = getopt(argc, argv, "h:n:lud")) != -1) {
+    while((c = getopt(argc, argv, "h:m:n:l:u:d:p:i:")) != -1) {
         switch(c) {
             case 'h':
                 // TODO: Read in actual hash
                 strcpy(hash, optarg);
                 hash_arg = 1;
+                break;
             case 'n':
                 length = atoi(optarg);
                 break;
             case 'l':
+                min_lowercase = atoi(optarg);
                 lowercase = 1;
                 break;
             case 'u':
+                min_uppercase = atoi(optarg);
                 uppercase = 1;
                 break;
             case 'd':
+                min_digits = atoi(optarg);
                 digits = 1;
+                break;
+            case 'p':
+                min_punctuation = atoi(optarg);
+                punctuation = 1;
+                break;
+            case 'i':
+                iterations = atoi(optarg);
                 break;
         }
     }
 
     // Check arguments
-    if (length == 0 || hash_arg == 0) {
+    if (!hash_arg) {
         printf("Usage: ./main\n"
-               "REQUIRED: -h (password hash) "
-               "-n (password length)\n"
-               "DEFAULT -lud unless specified: -l (contains lowercase) "
-               "-u (contains uppercase) "
-               "-d (contains digits)\n");
+                "REQUIRED: -h (password hash)\n"
+                "OPTIONAL (default 1-5 characters, all possible types, 1 iteration):\n"
+                "-m (min password length)\n"
+                "-n (max password length)\n"
+                "-l (min lowercase characters)\n"
+                "-u (min uppercase characters)\n"
+                "-d (min digits characters)\n"
+                "-p (min punctuation characters)\n"
+                "-i (number of iterations to hash)\n"
+                );
         return 1;
     }
-    if (lowercase == 0 && uppercase == 0 && digits == 0) {
+    if (!lowercase && !uppercase && !digits && !punctuation) {
         lowercase = 1;
         uppercase = 1;
         digits = 1;
+        punctuation = 1;
     }
 
     // Get the possible characters for the password
-    num_values = lowercase * 26 + uppercase * 26 + digits * 10;
+    num_values = lowercase * 26 + uppercase * 26 + digits * 10 + punctuation * 16;
     char values[num_values + 1];
     int index = 0;
     if (lowercase) {
@@ -91,6 +119,12 @@ int main(int argc, char *argv[]) {
     }
     if (uppercase) {
         for (i = UPPERCASE_START; i < UPPERCASE_START + 26; i++) {
+            values[index] = i;
+            index++;
+        }
+    }
+    if (punctuation) {
+        for (i = PUNCTUATION_START; i < PUNCTUATION_START + 16; i++) {
             values[index] = i;
             index++;
         }
@@ -146,6 +180,37 @@ int main(int argc, char *argv[]) {
     CHK_ERR(err);
     err = clSetKernelArg(brute_force, 6, sizeof(int), &length);
     CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 7, sizeof(int), &min_lowercase);
+    CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 8, sizeof(int), &min_uppercase);
+    CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 9, sizeof(int), &min_digits);
+    CHK_ERR(err);
+    err = clSetKernelArg(brute_force, 10, sizeof(int), &min_punctuation);
+    CHK_ERR(err);
+
+    printf("Cracking password with %d characters with %d iterations containing:\n",
+            length, iterations);
+    if (lowercase) {
+        printf("At least %d lowercase characters\n", min_lowercase);
+    } else {
+        printf("No lowercase characters\n");
+    }
+    if (uppercase) {
+        printf("At least %d uppercase characters\n", min_uppercase);
+    } else {
+        printf("No uppercase characters\n");
+    }
+    if (digits) {
+        printf("At least %d digits characters\n", min_digits);
+    } else {
+        printf("No digits characters\n");
+    }
+    if (punctuation) {
+        printf("At least %d punctuation characters\n", min_punctuation);
+    } else {
+        printf("No punctuation characters\n");
+    }
 
     // Execute the kernel on the GPU
     double t0 = timestamp();
